@@ -1,0 +1,372 @@
+openapi: "3.0.0"
+info:
+  description: The Restricted Word Service provides an API for managing and enforcing the Restricted Word bounded context and its domain objects.
+  version: "1.0.0"
+  title: Restricted Word Service
+servers:
+  - url: http://localhost:8080/
+  - url: http://test.api.akc.org/crate/restricted-word-service/
+  - url: http://stage.api.akc.org/crate/restricted-word-service/
+  - url: http://api.akc.org/crate/restricted-word-service/
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    MatchCheck:
+      type: object
+      properties:
+        text:
+          type: string
+        wordTypeIds:
+          type: array
+          items:
+            type: string
+        result:
+          type: object
+          properties:
+            contains:
+              type: boolean
+            matches:
+              type: array
+              items:
+                type: object
+                properties:
+                  wordId:
+                    type: string
+    SearchType:
+      type: object
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+    RestrictedWord:
+      type: object
+      properties:
+        id:
+          type: string
+        wordTypeId:
+          type: string
+          enum:
+            - CHAR
+            - AKC
+            - NAUGHTY
+            - ROMAN
+            - OTHER
+            - ORG
+            - FAM
+            - FAM_EXT
+        searchTypeId:
+          type: string
+          enum:
+            - WHOLE
+            - CONTAIN
+            - EXACT
+    WordType:
+      type: object
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+
+    # lists
+    RestrictedWordList:
+        type: array
+        items:
+          $ref: "#/components/schemas/RestrictedWord"
+    SearchTypeList:
+      type: array
+      items:
+        $ref: "#/components/schemas/SearchType"
+    WordTypeList:
+      type: array
+      items:
+        $ref: "#/components/schemas/WordType"
+
+  parameters:
+    # path
+    search_type_id:
+      in: path
+      description: The ID of a given search type
+      name: search_type_id
+      required: true
+      schema:
+        type: string
+        pattern: "^[a-zA-Z0-9-]+$"
+    word_id:
+      in: path
+      description: The ID of a given word
+      name: word_id
+      required: true
+      schema:
+        type: string
+    word_type_id:
+      in: path
+      description: The ID of a given word type
+      name: word_type_id
+      required: true
+      schema:
+        type: string
+        pattern: "^[a-zA-Z0-9-_]+$"
+
+    # query
+    searchTypeId:
+      in: query
+      description: Used to filter on the word's search type
+      name: searchTypeId
+      required: false
+      schema:
+        type: string
+    wordTypeId:
+      in: query
+      description: Used to filter on the word's word type
+      name: wordTypeId
+      required: false
+      schema:
+        type: string
+
+
+# Paths supported by the server application
+paths:
+  /manage/health:
+    get:
+      operationId: "app.adaptor.breeds.get_health"
+      tags:
+        - "health"
+      summary: "Query the service health"
+      description: "Query the service health"
+      responses:
+        "200":
+          description: "Successful health check"
+  /manage/info:
+    get:
+      operationId: "app.adaptor.breeds.get_info"
+      tags:
+        - "service-info"
+      summary: "Query the service info"
+      description: "Query the service info"
+      responses:
+        "200":
+          description: "Successful health check"
+
+  # search types
+  /v1/search-types:
+    get:
+      operationId: "app.adaptor.search_type_routes.get_search_types"
+      tags:
+        - "Search Type"
+      summary: "Get a list of search types"
+      description: "Get a list of search types; optional parameter matching for specific search or search types"
+      responses:
+        '200':
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchTypeList'
+  /v1/search-types/{search_type_id}:
+    parameters:
+      - $ref: "#/components/parameters/search_type_id"
+    get:
+      operationId: "app.adaptor.search_type_routes.get_search_type_by_id"
+      tags:
+        - "Search Type"
+      summary: "Get a single search type"
+      description: "Get a single of search type"
+      responses:
+        '200':
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchType'
+        '404':
+          description: "Not found"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # word types
+  /v1/word-types:
+    get:
+      operationId: "app.adaptor.word_type_routes.get_word_types"
+      tags:
+        - "Word Type"
+      summary: "Get a list of word types"
+      description: "Get a list of word types; optional parameter matching for specific search or word types"
+      responses:
+        '200':
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WordTypeList'
+  /v1/word-types/{word_type_id}:
+    parameters:
+      - $ref: "#/components/parameters/word_type_id"
+    get:
+      operationId: "app.adaptor.word_type_routes.get_word_type_by_id"
+      tags:
+        - "Word Type"
+      summary: "Get a single word type"
+      description: "Get a single of word type"
+      responses:
+        '200':
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WordType'
+        '404':
+          description: "Not found"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # words
+  /v1/restricted-words:
+    get:
+      operationId: "app.adaptor.restricted_word_routes.get_restricted_words"
+      tags:
+        - "Restricted Word"
+      summary: "Get a list of restricted words"
+      description: "Get a list of restricted words; optional parameter matching for specific search or word types"
+      parameters:
+        - $ref: "#/components/parameters/searchTypeId"
+        - $ref: "#/components/parameters/wordTypeId"
+      responses:
+        '200':
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestrictedWordList'
+    post:
+      operationId: "app.adaptor.restricted_word_routes.post_restricted_word"
+      tags:
+        - "Restricted Word"
+      summary: "Create a new restricted word"
+      description: "Creates a new restricted word; will error on id conflict"
+      requestBody:
+        description: The new restricted word to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestrictedWord'
+      responses:
+        '200':
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestrictedWord'
+        '409':
+          description: "Error - id already in use"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/restricted-words/{word_id}:
+    parameters:
+      - $ref: "#/components/parameters/word_id"
+    get:
+      operationId:  "app.adaptor.restricted_word_routes.get_restricted_word"
+      tags:
+        - "Restricted Word"
+      summary: "Retrieve a single restricted word"
+      description: "Retrieve a single restricted word"
+      responses:
+        '200':
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestrictedWord'
+        '404':
+          description: "The restricted word wasn't found"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      operationId:  "app.adaptor.restricted_word_routes.put_restricted_word"
+      tags:
+        - "Restricted Word"
+      summary: "Replace a restricted word"
+      description: "Replace a restricted word"
+      requestBody:
+        description: The updated restricted word
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestrictedWord'
+      responses:
+        '200':
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestrictedWord'
+        '404':
+          description: "The word wasn't found"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      operationId:  "app.adaptor.restricted_word_routes.delete_restricted_word"
+      tags:
+        - "Restricted Word"
+      summary: "Remove a restricted word"
+      description: "Removes a restricted word"
+      responses:
+        '204':
+          description: "Successful operation"
+        '404':
+          description: "The restricted word wasn't found"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # match
+  /v1/match-check:
+    post:
+      operationId: "app.adaptor.match_routes.check_text_for_match"
+      tags:
+        - "Match Check"
+      summary: "Check for word type matches"
+      description: "Analyzes the given text for matches based on the wordTypeId list provided"
+      requestBody:
+        description: The match check to execute
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchCheck'
+      responses:
+        '200':
+          description: "Successful operation"
+          content:
+            application/json:
+              examples:
+                default:
+                  summary: Default values from the workflow
+                  value: |
+                    {
+                      "text" : "Hi there",
+                      "wordTypeIds" : ["NAUGHTY"]
+                    }
+              schema:
+                $ref: '#/components/schemas/MatchCheck'
